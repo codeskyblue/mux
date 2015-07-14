@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"runtime"
-	"strconv"
 )
 
 type SafeStreamSocket struct {
@@ -67,13 +66,12 @@ func (m *MuxDevice) Fields() string {
 }
 
 const (
-	TypeResult       = "Result"
-	TypeConnect      = "Connect"
-	TypeListen       = "Listen"
-	TypeDeviceAdd    = "Attached"
-	TypeDeviceRemove = "Detached"
-	TypePlist        = 8
-	Version          = 1
+	TypeResult       = 1
+	TypeConnect      = 2
+	TypeListen       = 3
+	TypeDeviceAdd    = 4
+	TypeDeviceRemove = 5
+	Version          = 0
 )
 
 type BinaryProtocol struct {
@@ -86,11 +84,11 @@ func NewBinaryProtocol(socket net.Conn) *BinaryProtocol {
 }
 
 // still needs work
-func (b *BinaryProtocol) _pack(req string, payload map[string]string) []byte {
+func (b *BinaryProtocol) _pack(req int, payload map[string]string) []byte {
 	switch req {
 	case TypeConnect:
 		buf := &bytes.Buffer{}
-		data := "IH" + payload["DeviceID"] + payload["PortNumber"] + "\x00\x00"
+		data := payload["DeviceID"] + payload["PortNumber"] + "\x00\x00"
 		binary.Write(buf, binary.LittleEndian, data)
 		return buf.Bytes()
 	case TypeListen:
@@ -101,37 +99,34 @@ func (b *BinaryProtocol) _pack(req string, payload map[string]string) []byte {
 	return nil
 }
 
-func (b *BinaryProtocol) _unpack(resp string, payload map[string]string) []byte {
-	var unpacked map[string]string
+func (b *BinaryProtocol) _unpack(resp int, payload interface{}) (map[string][]byte, []byte) {
 	switch resp {
 	case TypeResult:
 		buf := &bytes.Buffer{}
-		binary.Read(buf, binary.LittleEndian, ("I" + payload)[0])
-		unpacked["Number"] = buf.Bytes()
-		return unpacked["Number"]
+		binary.Read(buf, binary.LittleEndian, payload)
+		unpacked := map[string][]byte{
+			"Number": buf.Bytes(),
+		}
+		return unpacked, nil
 	case TypeDeviceAdd:
 		buf := &bytes.Buffer{}
-		binary.Read(buf, binary.LittleEndian, "IH256sHI"+payload)
+		binary.Read(buf, binary.LittleEndian, payload)
 		// devid, serial, pad, location := payload
 	case TypeDeviceRemove:
 		buf := &bytes.Buffer{}
-		binary.Read(buf, binary.LittleEndian, "I"+payload)
+		binary.Read(buf, binary.LittleEndian, payload)
 	}
 }
 
-func (b *BinaryProtocol) sendpacket(req string, tag int, payload map[string]string) {
+func (b *BinaryProtocol) sendpacket(req int, tag int, payload map[string]string) {
 	pLoad := b._pack(req, payload)
 	if b.connected {
 		fmt.Println("Mux is connected, cannot issue control packets")
 	}
 	length := 16 + len(pLoad)
-	buf := &bytes.Buffer{}
-	i, _ := strconv.Atoi("IIII")
-	data := (i + length + req + tag)
-	binary.Write(buf, binary.LittleEndian, data)
-	b.sock.Write(data) // data + pLoad
-	// b.sock.Write(pLoad)
-	// ugly and probably wrong
+	data := &bytes.Buffer{}
+	binary.Write(data, binary.LittleEndian, length+Version+req+tag+payload)
+	b.sock.Write(data)
 }
 
 func (b *BinaryProtocol) getpacket() (interface{}, interface{}, map[string]string) {
@@ -144,11 +139,11 @@ func (b *BinaryProtocol) getpacket() (interface{}, interface{}, map[string]strin
 		fmt.Println(err)
 	}
 	byteBuf := []*bytes.Buffer{{}, {}, {}}
-	binary.Write(byteBuf[0], binary.LittleEndian, ("I" + dlen)[0])
+	binary.Write(byteBuf[0], binary.LittleEndian, dlen[0])
 	// body :=
 	var _, _ = b.sock.Read(byteBuf[0].Bytes() - []byte{4}) //ugly
 	// version, resp, tag :=
-	binary.Write(byteBuf[1], binary.LittleEndian, "III"+string(byteBuf[0].Bytes()[:0xc])) // ugly
+	binary.Write(byteBuf[1], binary.LittleEndian, byteBuf[0].Bytes()[:0xc])
 	// payload ==
 	var _ = binary.Write(byteBuf[2], binary.LittleEndian, byteBuf[0].Bytes()[0xc:])
 	// return resp, tag, payload
@@ -205,7 +200,7 @@ func (m *MuxConnection) _processpacket() {
 
 	switch resp {
 	case TypeDeviceAdd:
-		m.devices.append(NewMuxDevice(data["DeviceID"], data["Properties"], data["Properties"]["SerialNumber"], data["Properties"]["LocationID"]))
+		append(m.devices, NewMuxDevice(data["DeviceID"], data["Properties"], data["Properties"]["SerialNumber"], data["Properties"]["LocationID"]))
 	case TypeDeviceRemove:
 		for i, v := range m.devices {
 			if v.devid == data["DeviceID"] {
@@ -219,7 +214,7 @@ func (m *MuxConnection) _processpacket() {
 	}
 }
 
-func (m *MuxConnection) _exchange(req string, payload map[string]string) {
+func (m *MuxConnection) _exchange(req int, payload map[string]string) {
 	mytag := m.pkttag
 	m.pkttag++
 	m.proto.(*BinaryProtocol).sendpacket(req, m.pkttag, payload)
