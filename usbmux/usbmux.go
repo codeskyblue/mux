@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"runtime"
+	"strings"
 )
 
 type SafeStreamSocket struct {
@@ -88,34 +89,47 @@ func (b *BinaryProtocol) _pack(req int, payload map[string]string) []byte {
 	switch req {
 	case TypeConnect:
 		buf := &bytes.Buffer{}
-		data := payload["DeviceID"] + payload["PortNumber"] + "\x00\x00"
-		binary.Write(buf, binary.LittleEndian, data)
+		binary.Write(buf, binary.LittleEndian, payload["DeviceID"]+payload["PortNumber"]+"\x00\x00")
 		return buf.Bytes()
 	case TypeListen:
 		return nil
-	default:
-		fmt.Printf("Invalid outgoing request type %d", req)
 	}
+	fmt.Printf("Invalid outgoing request type %d", req)
 	return nil
 }
 
-func (b *BinaryProtocol) _unpack(resp int, payload interface{}) (map[string][]byte, []byte) {
+func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]interface{} {
 	switch resp {
 	case TypeResult:
 		buf := &bytes.Buffer{}
 		binary.Read(buf, binary.LittleEndian, payload)
-		unpacked := map[string][]byte{
-			"Number": buf.Bytes(),
+		return map[string]interface{}{
+			"Number": buf.Bytes()[0],
 		}
-		return unpacked, nil
 	case TypeDeviceAdd:
 		buf := &bytes.Buffer{}
 		binary.Read(buf, binary.LittleEndian, payload)
-		// devid, serial, pad, location := payload
+		devid, usbpid, pad, location := buf.Bytes()[0], buf.Bytes()[1], buf.Bytes()[3], buf.Bytes()[4]
+		serial := strings.Split(string(buf.Bytes()[2]), "\\0")[0] //ugly
+		return map[string]interface{}{
+			"DeviceID": devid,
+			"Properties": map[string]interface{}{
+				"LocationID":   location,
+				"SerialNumber": serial,
+				"ProductID":    usbpid,
+			},
+		}
 	case TypeDeviceRemove:
 		buf := &bytes.Buffer{}
 		binary.Read(buf, binary.LittleEndian, payload)
+		devid := buf.Bytes()[0]
+		return map[string]interface{}{
+			"DeviceID": devid,
+		}
+	default:
+		fmt.Printf("Invalid incoming request type %d", resp)
 	}
+	return nil
 }
 
 func (b *BinaryProtocol) sendpacket(req int, tag int, payload map[string]string) {
