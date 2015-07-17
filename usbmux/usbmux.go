@@ -89,11 +89,11 @@ func NewBinaryProtocol(socket net.Conn) *BinaryProtocol {
 }
 
 // still needs work
-func (b *BinaryProtocol) _pack(req int, payload map[string]string) []byte {
+func (b *BinaryProtocol) _pack(req int, payload map[string]interface{}) []byte {
 	switch req {
 	case TypeConnect:
 		buf := &bytes.Buffer{}
-		binary.Write(buf, binary.LittleEndian, payload["DeviceID"]+payload["PortNumber"]+"\x00\x00")
+		binary.Write(buf, binary.LittleEndian, payload["DeviceID"].(string)+payload["PortNumber"].(string)+"\x00\x00")
 		return buf.Bytes()
 	case TypeListen:
 		return nil
@@ -114,7 +114,7 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 	case TypeDeviceAdd:
 		buf := &bytes.Buffer{}
 		binary.Read(buf, binary.LittleEndian, payload)
-		devid, usbpid, pad, location := buf.Bytes()[0], buf.Bytes()[1], buf.Bytes()[3], buf.Bytes()[4]
+		devid, usbpid, location := buf.Bytes()[0], buf.Bytes()[1], buf.Bytes()[4]
 		serial := strings.Split(string(buf.Bytes()[2]), "\\0")[0] //ugly
 		return map[string]interface{}{
 			"DeviceID": devid,
@@ -138,41 +138,47 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 	return nil
 }
 
-func (b *BinaryProtocol) sendpacket(req int, tag int, payload map[string]string) {
-	pLoad := b._pack(req, payload)
+// fix variable names here
+func (b *BinaryProtocol) sendpacket(req int, tag int, payload map[string]interface{}) {
+	payload2 := b._pack(req, payload)
 
 	if b.connected {
 		fmt.Println("Mux is connected, cannot issue control packets")
 	}
-	length := 16 + len(pLoad)
 
+	length := 16 + len(payload2)
 	data := &bytes.Buffer{}
-	binary.Write(data, binary.LittleEndian, length+Version+req+tag+payload)
-	b.sock.Write(data)
+	binary.Write(data, binary.LittleEndian, length+Version+req+tag) // +payload2
+	b.sock.Write(data.Bytes())
 }
 
-func (b *BinaryProtocol) getpacket() (interface{}, interface{}, map[string]string) {
+// this function is disgusting
+// maybe return 3 interface{} ?
+func (b *BinaryProtocol) getpacket() (interface{}, interface{}, interface{}) {
 	if b.connected {
 		fmt.Println("Mux is connected, cannot issue control packets")
 	}
 
-	buf := []byte{}
-	dlen, err := b.sock.Read(buf)
-	if err != nil {
-		fmt.Println(err)
+	buf := make([]byte, 4)
+	byteBuf := []*bytes.Buffer{{}, {}, {}}
+
+	_, _ = b.sock.Read(buf)
+
+	binary.Write(byteBuf[0], binary.LittleEndian, buf[0])
+
+	// byteBuf[1] == body
+	// var _, _ = b.sock.Read(byteBuf[0].Bytes() - []byte{4}) //ugly
+
+	binary.Write(byteBuf[1], binary.LittleEndian, byteBuf[0].Bytes()[:0xc])
+	version, resp, tag := byteBuf[1].Bytes()[0], byteBuf[1].Bytes()[1], byteBuf[1].Bytes()[2]
+
+	if version != Version {
+		fmt.Printf("Version mismatch: expected %d, got %d", Version, version)
 	}
 
-	byteBuf := []*bytes.Buffer{{}, {}, {}}
-	binary.Write(byteBuf[0], binary.LittleEndian, dlen[0])
-	// body :=
-	var _, _ = b.sock.Read(byteBuf[0].Bytes() - []byte{4}) //ugly
-	// version, resp, tag :=
-	binary.Write(byteBuf[1], binary.LittleEndian, byteBuf[0].Bytes()[:0xc])
+	payload := b._unpack(int(resp), byteBuf[2].Bytes()[0xc:])
 
-	// payload ==
-	var _ = binary.Write(byteBuf[2], binary.LittleEndian, byteBuf[0].Bytes()[0xc:])
-	// return resp, tag, payload
-	return nil, nil, byteBuf[2]
+	return resp, tag, payload
 }
 
 type PlistProtocol struct {
@@ -214,7 +220,7 @@ func (m *MuxConnection) _getreply() (interface{}, map[string]string) {
 		resp, tag, data := m.proto.(*BinaryProtocol).getpacket()
 
 		if resp == TypeResult {
-			return tag, data
+			return tag, data.(map[string]string)
 		}
 
 		fmt.Printf("Invalid packet type received: %d", resp)
@@ -223,15 +229,18 @@ func (m *MuxConnection) _getreply() (interface{}, map[string]string) {
 }
 
 func (m *MuxConnection) _processpacket() {
-	resp, tag, data := m.proto.(*BinaryProtocol).getpacket()
+	// tag not needed?
+	resp, _, data := m.proto.(*BinaryProtocol).getpacket()
+	a := data.(map[string]interface{})
 
 	switch resp {
 	case TypeDeviceAdd:
-		append(m.devices, NewMuxDevice(data["DeviceID"], data["Properties"], data["Properties"]["SerialNumber"], data["Properties"]["LocationID"]))
+		// welcome to assertion hell
+		m.devices = append(m.devices, NewMuxDevice(a["DeviceID"].(float32), a["Properties"].(byte), a["Properties"].(map[string]string)["SerialNumber"], a["Properties"].(map[string]byte)["LocationID"]))
 	case TypeDeviceRemove:
 		for i, v := range m.devices {
-			if v.devid == data["DeviceID"] {
-				delete(m.devices, v)
+			if v.devid == a["DeviceID"] {
+				m.devices = append(m.devices[:i], m.devices[i+1:]...)
 			}
 		}
 	case TypeResult:
@@ -241,7 +250,7 @@ func (m *MuxConnection) _processpacket() {
 	}
 }
 
-func (m *MuxConnection) _exchange(req int, payload map[string]string) {
+func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) interface{} {
 	mytag := m.pkttag
 	m.pkttag++
 
@@ -269,7 +278,7 @@ func (m *MuxConnection) process(timeout interface{}) {
 }
 
 func (m *MuxConnection) connect(device *MuxDevice, port int) net.Conn {
-	payload := map[string]int{
+	payload := map[string]interface{}{
 		"DeviceID":   device.devid,
 		"PortNumber": ((port << 8) & 0xFF00) | (port >> 8),
 	}
@@ -291,7 +300,7 @@ type USBMux struct {
 	socketpath string
 	protoclass interface{}
 	listener   *MuxConnection
-	devices    []string
+	devices    []*MuxDevice
 	version    int
 }
 
@@ -316,7 +325,7 @@ func (u *USBMux) process(timeout interface{}) {
 	u.listener.process(timeout)
 }
 
-func (u *USBMux) connect(device, port string) net.Conn {
+func (u *USBMux) connect(device *MuxDevice, port int) net.Conn {
 	connector := NewMuxConnection(u.socketpath, BinaryProtocol{})
 	return connector.connect(device, port)
 }
