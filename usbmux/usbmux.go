@@ -18,11 +18,13 @@ func NewSafeStreamSocket(network, address string) *SafeStreamSocket {
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	return &SafeStreamSocket{ret}
 }
 
 func (s *SafeStreamSocket) send(msg []byte) {
 	var totalsent int
+
 	for totalsent < len(msg) {
 		sent, err := s.sock.Write(msg[totalsent:])
 		if err != nil {
@@ -38,6 +40,7 @@ func (s *SafeStreamSocket) send(msg []byte) {
 func (s *SafeStreamSocket) recv(size int) string {
 	var msg string
 	payload := []byte{byte(size - len(msg))} //ugly
+
 	for len(msg) < size {
 		var chunk, err = s.sock.Read(payload)
 		if err != nil {
@@ -48,6 +51,7 @@ func (s *SafeStreamSocket) recv(size int) string {
 		}
 		msg = msg + string(chunk) //ugly
 	}
+
 	return msg
 }
 
@@ -94,6 +98,7 @@ func (b *BinaryProtocol) _pack(req int, payload map[string]string) []byte {
 	case TypeListen:
 		return nil
 	}
+
 	fmt.Printf("Invalid outgoing request type %d", req)
 	return nil
 }
@@ -129,15 +134,18 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 	default:
 		fmt.Printf("Invalid incoming request type %d", resp)
 	}
+
 	return nil
 }
 
 func (b *BinaryProtocol) sendpacket(req int, tag int, payload map[string]string) {
 	pLoad := b._pack(req, payload)
+
 	if b.connected {
 		fmt.Println("Mux is connected, cannot issue control packets")
 	}
 	length := 16 + len(pLoad)
+
 	data := &bytes.Buffer{}
 	binary.Write(data, binary.LittleEndian, length+Version+req+tag+payload)
 	b.sock.Write(data)
@@ -147,17 +155,20 @@ func (b *BinaryProtocol) getpacket() (interface{}, interface{}, map[string]strin
 	if b.connected {
 		fmt.Println("Mux is connected, cannot issue control packets")
 	}
+
 	buf := []byte{}
 	dlen, err := b.sock.Read(buf)
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	byteBuf := []*bytes.Buffer{{}, {}, {}}
 	binary.Write(byteBuf[0], binary.LittleEndian, dlen[0])
 	// body :=
 	var _, _ = b.sock.Read(byteBuf[0].Bytes() - []byte{4}) //ugly
 	// version, resp, tag :=
 	binary.Write(byteBuf[1], binary.LittleEndian, byteBuf[0].Bytes()[:0xc])
+
 	// payload ==
 	var _ = binary.Write(byteBuf[2], binary.LittleEndian, byteBuf[0].Bytes()[0xc:])
 	// return resp, tag, payload
@@ -201,9 +212,11 @@ func NewMuxConnection(socketpath string, protoclass interface{}) *MuxConnection 
 func (m *MuxConnection) _getreply() (interface{}, map[string]string) {
 	for true {
 		resp, tag, data := m.proto.(*BinaryProtocol).getpacket()
+
 		if resp == TypeResult {
 			return tag, data
 		}
+
 		fmt.Printf("Invalid packet type received: %d", resp)
 	}
 	return nil, nil
@@ -231,12 +244,14 @@ func (m *MuxConnection) _processpacket() {
 func (m *MuxConnection) _exchange(req int, payload map[string]string) {
 	mytag := m.pkttag
 	m.pkttag++
+
 	m.proto.(*BinaryProtocol).sendpacket(req, m.pkttag, payload)
 	recvtag, data := m._getreply()
+
 	if recvtag != mytag {
 		fmt.Printf("Reply tag mismatch: expected %d, got %d", mytag, recvtag)
 	}
-	// data is the wrong type!
+
 	return data["Number"]
 }
 
@@ -258,10 +273,12 @@ func (m *MuxConnection) connect(device *MuxDevice, port int) net.Conn {
 		"DeviceID":   device.devid,
 		"PortNumber": ((port << 8) & 0xFF00) | (port >> 8),
 	}
+
 	ret := m._exchange(TypeConnect, payload)
 	if ret != 0 {
 		fmt.Printf("Connect failed: error %d", ret)
 	}
+
 	m.proto.(*BinaryProtocol).connected = true
 	return m.socket.sock
 }
@@ -289,6 +306,7 @@ func NewUSBMux(socketpath string) *USBMux {
 
 	b := &BinaryProtocol{}
 	u := &USBMux{socketpath, b, NewMuxConnection(socketpath, b), nil, 0}
+
 	u.devices = u.listener.devices
 	u.listener.listen()
 	return u
@@ -299,8 +317,6 @@ func (u *USBMux) process(timeout interface{}) {
 }
 
 func (u *USBMux) connect(device, port string) net.Conn {
-	// this is sloppy
-	// really need to figure out this Binary and Plist protocol business
 	connector := NewMuxConnection(u.socketpath, BinaryProtocol{})
 	return connector.connect(device, port)
 }
