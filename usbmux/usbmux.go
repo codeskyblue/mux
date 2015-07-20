@@ -256,13 +256,12 @@ func (m *MuxConnection) _processpacket() {
 }
 
 func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) interface{} {
-	mytag := m.pkttag
 	m.pkttag++
 
 	m.proto.(*BinaryProtocol).sendpacket(req, m.pkttag, payload)
 	recvtag, data := m._getreply()
 
-	if recvtag != mytag {
+	if recvtag != m.pkttag {
 		panic(fmt.Sprintf("Reply tag mismatch: expected %d, got %d", m.pkttag, recvtag))
 	}
 
