@@ -231,18 +231,20 @@ func (m *MuxConnection) _getreply() (interface{}, map[string]string) {
 	return nil, nil
 }
 
+// this function is disgusting
 func (m *MuxConnection) _processpacket() {
 	// tag not needed?
 	resp, _, data := m.proto.(*BinaryProtocol).getpacket()
-	a := data.(map[string]interface{})
 
 	switch resp {
 	case TypeDeviceAdd:
 		// welcome to assertion hell
-		m.devices = append(m.devices, NewMuxDevice(a["DeviceID"].(float32), a["Properties"].(byte), a["Properties"].(map[string]string)["SerialNumber"], a["Properties"].(map[string]byte)["LocationID"]))
+		// this is literally hitler code
+		m.devices = append(m.devices, NewMuxDevice(data.(map[string]interface{})["DeviceID"].(float32), data.(map[string]interface{})["Properties"].(byte), data.(map[string]interface{})["Properties"].(map[string]string)["SerialNumber"], data.(map[string]interface{})["Properties"].(map[string]byte)["LocationID"]))
 	case TypeDeviceRemove:
 		for i, v := range m.devices {
-			if v.devid == a["DeviceID"] {
+			if v.devid == data.(map[string]interface{})["DeviceID"] {
+				// deletes an element from the map
 				m.devices = append(m.devices[:i], m.devices[i+1:]...)
 			}
 		}
