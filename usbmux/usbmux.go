@@ -10,7 +10,7 @@ import (
 )
 
 type SafeStreamSocket struct {
-	sock net.Conn // ??
+	sock net.Conn
 }
 
 func NewSafeStreamSocket(network, address string) *SafeStreamSocket {
@@ -116,7 +116,7 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 
 		binary.Read(buf, binary.LittleEndian, payload)
 		devid, usbpid, location := buf.Bytes()[0], buf.Bytes()[1], buf.Bytes()[4]
-		serial := strings.Split(string(buf.Bytes()[2]), "\\0")[0] //ugly
+		serial := strings.Split(string(buf.Bytes()[2]), "\\0")[0]
 
 		return map[string]interface{}{
 			"DeviceID": devid,
@@ -270,7 +270,7 @@ func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) inter
 
 func (m *MuxConnection) listen() {
 	ret := m._exchange(TypeListen, nil)
-	if ret != 0 {
+	if ret != nil {
 		panic(fmt.Sprintf("Listen failed: error ", ret))
 	}
 }
@@ -310,11 +310,7 @@ type USBMux struct {
 
 func NewUSBMux(socketpath string) *USBMux {
 	if socketpath == "" {
-		if runtime.GOOS == "darwin" {
-			socketpath = "/var/run/usbmuxd"
-		} else {
-			socketpath = "var/run/usbmuxd"
-		}
+		socketpath = "/var/run/usbmuxd"
 	}
 
 	b := &BinaryProtocol{}
