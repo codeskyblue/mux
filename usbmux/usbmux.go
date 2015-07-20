@@ -303,7 +303,7 @@ type USBMux struct {
 	socketpath string
 	protoclass interface{}
 	listener   *MuxConnection
-	devices    []*MuxDevice
+	Devices    []*MuxDevice
 	version    int
 }
 
@@ -319,16 +319,16 @@ func NewUSBMux(socketpath string) *USBMux {
 	b := &BinaryProtocol{}
 	u := &USBMux{socketpath, b, NewMuxConnection(socketpath, b), nil, 0}
 
-	u.devices = u.listener.devices
+	u.Devices = u.listener.devices
 	u.listener.listen()
 	return u
 }
 
-func (u *USBMux) process(timeout interface{}) {
+func (u *USBMux) Process(timeout interface{}) {
 	u.listener.process(timeout)
 }
 
-func (u *USBMux) connect(device *MuxDevice, port int) net.Conn {
+func (u *USBMux) Connect(device *MuxDevice, port int) net.Conn {
 	connector := NewMuxConnection(u.socketpath, BinaryProtocol{})
 	return connector.connect(device, port)
 }

@@ -1,7 +1,8 @@
 package main
 
 import (
-	"tcprelay"
+	// "tcprelay"
+	"fmt"
 	"usbmux"
 )
 
@@ -10,15 +11,17 @@ func main() {
 	mux := usbmux.NewUSBMux("")
 	fmt.Println("Waiting for devices...")
 
-	if mux.devices == nil {
-		mux.process(0.1)
+	if mux.Devices == nil {
+		mux.Process(0.1)
 	}
 
 	for true {
 		fmt.Println("Devices:")
-		for i, v := range mux.devices {
-			fmt.Printlmn(v)
+
+		for _, v := range mux.Devices {
+			fmt.Println(v)
 		}
-		mux.process()
+
+		mux.Process(nil)
 	}
 }
