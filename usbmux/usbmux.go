@@ -31,7 +31,7 @@ func (s *SafeStreamSocket) send(msg []byte) {
 			fmt.Println(err)
 		}
 		if sent == 0 {
-			fmt.Println("socket connection broken")
+			panic(fmt.Sprintf("socket connection broken"))
 		}
 		totalsent = totalsent + sent
 	}
@@ -47,7 +47,7 @@ func (s *SafeStreamSocket) recv(size int) string {
 			fmt.Println(err)
 		}
 		if chunk == 0 {
-			fmt.Println("socket connection broken")
+			panic(fmt.Sprintf("socket connection broken"))
 		}
 		msg = msg + string(chunk) //ugly
 	}
@@ -99,7 +99,7 @@ func (b *BinaryProtocol) _pack(req int, payload map[string]interface{}) []byte {
 		return nil
 	}
 
-	fmt.Printf("Invalid outgoing request type %d", req)
+	panic(fmt.Sprintf("Invalid outgoing request type %d", req))
 	return nil
 }
 
@@ -113,9 +113,11 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 		}
 	case TypeDeviceAdd:
 		buf := &bytes.Buffer{}
+
 		binary.Read(buf, binary.LittleEndian, payload)
 		devid, usbpid, location := buf.Bytes()[0], buf.Bytes()[1], buf.Bytes()[4]
 		serial := strings.Split(string(buf.Bytes()[2]), "\\0")[0] //ugly
+
 		return map[string]interface{}{
 			"DeviceID": devid,
 			"Properties": map[string]interface{}{
@@ -126,15 +128,16 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 		}
 	case TypeDeviceRemove:
 		buf := &bytes.Buffer{}
+
 		binary.Read(buf, binary.LittleEndian, payload)
 		devid := buf.Bytes()[0]
+
 		return map[string]interface{}{
 			"DeviceID": devid,
 		}
 	default:
-		fmt.Printf("Invalid incoming request type %d", resp)
+		panic(fmt.Sprintf("Invalid incoming request type %d", resp))
 	}
-
 	return nil
 }
 
@@ -143,7 +146,7 @@ func (b *BinaryProtocol) sendpacket(req int, tag int, payload map[string]interfa
 	payload2 := b._pack(req, payload)
 
 	if b.connected {
-		fmt.Println("Mux is connected, cannot issue control packets")
+		panic(fmt.Sprintf("Mux is connected, cannot issue control packets"))
 	}
 
 	length := 16 + len(payload2)
@@ -156,7 +159,7 @@ func (b *BinaryProtocol) sendpacket(req int, tag int, payload map[string]interfa
 // maybe return 3 interface{} ?
 func (b *BinaryProtocol) getpacket() (interface{}, interface{}, interface{}) {
 	if b.connected {
-		fmt.Println("Mux is connected, cannot issue control packets")
+		panic(fmt.Sprintf("Mux is connected, cannot issue control packets"))
 	}
 
 	buf := make([]byte, 4)
@@ -173,7 +176,7 @@ func (b *BinaryProtocol) getpacket() (interface{}, interface{}, interface{}) {
 	version, resp, tag := byteBuf[1].Bytes()[0], byteBuf[1].Bytes()[1], byteBuf[1].Bytes()[2]
 
 	if version != Version {
-		fmt.Printf("Version mismatch: expected %d, got %d", Version, version)
+		panic(fmt.Sprintf("Version mismatch: expected %d, got %d", Version, version))
 	}
 
 	payload := b._unpack(int(resp), byteBuf[2].Bytes()[0xc:])
@@ -223,7 +226,7 @@ func (m *MuxConnection) _getreply() (interface{}, map[string]string) {
 			return tag, data.(map[string]string)
 		}
 
-		fmt.Printf("Invalid packet type received: %d", resp)
+		panic(fmt.Sprintf("Invalid packet type received: %d", resp))
 	}
 	return nil, nil
 }
@@ -244,9 +247,9 @@ func (m *MuxConnection) _processpacket() {
 			}
 		}
 	case TypeResult:
-		fmt.Printf("Unexpeted result: %d", resp)
+		panic(fmt.Sprintf("Unexpeted result: %d", resp))
 	default:
-		fmt.Printf("Invalid packet type received %d", resp)
+		panic(fmt.Sprintf("Invalid packet type received %d", resp))
 	}
 }
 
@@ -258,7 +261,7 @@ func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) inter
 	recvtag, data := m._getreply()
 
 	if recvtag != mytag {
-		fmt.Printf("Reply tag mismatch: expected %d, got %d", mytag, recvtag)
+		panic(fmt.Sprintf("Reply tag mismatch: expected %d, got %d", m.pkttag, recvtag))
 	}
 
 	return data["Number"]
@@ -267,13 +270,13 @@ func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) inter
 func (m *MuxConnection) listen() {
 	ret := m._exchange(TypeListen, nil)
 	if ret != 0 {
-		fmt.Println("Listen failed: error ", ret)
+		panic(fmt.Sprintf("Listen failed: error ", ret))
 	}
 }
 
 func (m *MuxConnection) process(timeout interface{}) {
 	if m.proto.(*BinaryProtocol).connected {
-		fmt.Println("Socket is connected, cannot process listener events")
+		panic(fmt.Sprintf("Socket is connected, cannot process listener events"))
 	}
 }
 
@@ -285,7 +288,7 @@ func (m *MuxConnection) connect(device *MuxDevice, port int) net.Conn {
 
 	ret := m._exchange(TypeConnect, payload)
 	if ret != 0 {
-		fmt.Printf("Connect failed: error %d", ret)
+		panic(fmt.Sprintf("Connect failed: error %d", ret))
 	}
 
 	m.proto.(*BinaryProtocol).connected = true
