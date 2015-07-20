@@ -100,7 +100,6 @@ func (b *BinaryProtocol) _pack(req int, payload map[string]interface{}) []byte {
 	}
 
 	panic(fmt.Sprintf("Invalid outgoing request type %d", req))
-	return nil
 }
 
 func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]interface{} {
@@ -135,10 +134,8 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 		return map[string]interface{}{
 			"DeviceID": devid,
 		}
-	default:
-		panic(fmt.Sprintf("Invalid incoming request type %d", resp))
 	}
-	return nil
+	panic(fmt.Sprintf("Invalid incoming request type %d", resp))
 }
 
 // fix variable names here
@@ -271,7 +268,7 @@ func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) inter
 func (m *MuxConnection) listen() {
 	ret := m._exchange(TypeListen, nil)
 	if ret != nil {
-		panic(fmt.Sprintf("Listen failed: error ", ret))
+		panic(fmt.Sprintf("Listen failed: error %d", ret))
 	}
 }
 
