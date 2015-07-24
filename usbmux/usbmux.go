@@ -45,7 +45,10 @@ func (s *SafeStreamSocket) recv(size int) []byte {
 	payload := []byte{data}
 
 	for len(msg) < size {
-		chunk, _ := s.sock.Read(payload)
+		chunk, err := s.sock.Read(payload)
+		if err != nil {
+			panic(fmt.Sprintln(err))
+		}
 		if chunk == 0 {
 			panic(fmt.Sprintln("socket connection broken"))
 		}
