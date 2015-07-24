@@ -7,6 +7,7 @@ import (
 	"net"
 	"runtime"
 	"strings"
+	"time"
 )
 
 type SafeStreamSocket struct {
@@ -289,7 +290,7 @@ func (m *MuxConnection) listen() {
 	}
 }
 
-func (m *MuxConnection) process(timeout interface{}) {
+func (m *MuxConnection) process(timeout time.Duration) {
 	if m.proto.connected {
 		panic(fmt.Sprintf("Socket is connected, cannot process listener events"))
 	}
@@ -338,7 +339,7 @@ func NewUSBMux(socketpath string) *USBMux {
 	return u
 }
 
-func (u *USBMux) Process(timeout interface{}) {
+func (u *USBMux) Process(timeout time.Duration) {
 	u.listener.process(timeout)
 }
 
