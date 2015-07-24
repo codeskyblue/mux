@@ -294,8 +294,25 @@ func (m *MuxConnection) process(timeout time.Duration) {
 	if m.proto.connected {
 		panic(fmt.Sprintf("Socket is connected, cannot process listener events"))
 	}
-	// not really a thing
-	m._processpacket()
+	var ch chan net.Conn
+
+	ch <- m.socket.sock
+	ch <- nil
+	ch <- m.socket.sock
+
+	select {
+	case v := <-ch:
+		if v == m.socket.sock {
+			m._processpacket()
+		}
+	// not sure if this is a correct implementation
+	case <-time.After(timeout):
+		err := m.socket.sock.Close()
+		if err != nil {
+			panic(fmt.Sprintln(err))
+		}
+		panic(fmt.Sprintln("Exception in listener socket (channel timed out)"))
+	}
 }
 
 func (m *MuxConnection) connect(device *MuxDevice, port int) net.Conn {
