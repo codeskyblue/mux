@@ -188,12 +188,12 @@ type PlistProtocol struct {
 type MuxConnection struct {
 	socketpath string
 	socket     *SafeStreamSocket
-	proto      interface{}
+	proto      *BinaryProtocol
 	pkttag     int
 	devices    []*MuxDevice
 }
 
-func NewMuxConnection(socketpath string, protoclass interface{}) *MuxConnection {
+func NewMuxConnection(socketpath string) *MuxConnection {
 	var address, network string
 
 	if runtime.GOOS == "windows" {
@@ -206,18 +206,12 @@ func NewMuxConnection(socketpath string, protoclass interface{}) *MuxConnection 
 
 	s := NewSafeStreamSocket(network, address)
 
-	switch protoclass.(type) {
-	case BinaryProtocol:
-		return &MuxConnection{socketpath, s, NewBinaryProtocol(s.sock), 1, nil}
-	case PlistProtocol: // use NewPlistProtocol when it's implemented
-		return &MuxConnection{socketpath, s, PlistProtocol{NewBinaryProtocol(s.sock)}, 1, nil}
-	}
-	return nil
+	return &MuxConnection{socketpath, s, NewBinaryProtocol(s.sock), 1, nil}
 }
 
 func (m *MuxConnection) _getreply() (interface{}, map[string]string) {
 	for true {
-		resp, tag, data := m.proto.(*BinaryProtocol).getpacket()
+		resp, tag, data := m.proto.getpacket()
 
 		if resp == TypeResult {
 			return tag, data.(map[string]string)
@@ -231,7 +225,7 @@ func (m *MuxConnection) _getreply() (interface{}, map[string]string) {
 // this function is disgusting
 func (m *MuxConnection) _processpacket() {
 	// tag not needed?
-	resp, _, data := m.proto.(*BinaryProtocol).getpacket()
+	resp, _, data := m.proto.getpacket()
 
 	switch resp {
 	case TypeDeviceAdd:
@@ -255,7 +249,7 @@ func (m *MuxConnection) _processpacket() {
 func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) interface{} {
 	m.pkttag++
 
-	m.proto.(*BinaryProtocol).sendpacket(req, m.pkttag, payload)
+	m.proto.sendpacket(req, m.pkttag, payload)
 	recvtag, data := m._getreply()
 
 	if recvtag != m.pkttag {
@@ -273,9 +267,11 @@ func (m *MuxConnection) listen() {
 }
 
 func (m *MuxConnection) process(timeout interface{}) {
-	if m.proto.(*BinaryProtocol).connected {
+	if m.proto.connected {
 		panic(fmt.Sprintf("Socket is connected, cannot process listener events"))
 	}
+	// not really a thing
+	m._processpacket()
 }
 
 func (m *MuxConnection) connect(device *MuxDevice, port int) net.Conn {
@@ -289,7 +285,7 @@ func (m *MuxConnection) connect(device *MuxDevice, port int) net.Conn {
 		panic(fmt.Sprintf("Connect failed: error %d", ret))
 	}
 
-	m.proto.(*BinaryProtocol).connected = true
+	m.proto.connected = true
 	return m.socket.sock
 }
 
@@ -299,10 +295,10 @@ func (m *MuxConnection) close() {
 
 type USBMux struct {
 	socketpath string
-	protoclass interface{}
-	listener   *MuxConnection
-	Devices    []*MuxDevice
-	version    int
+	// protoclass *BinaryProtocol
+	listener *MuxConnection
+	Devices  []*MuxDevice
+	version  int
 }
 
 func NewUSBMux(socketpath string) *USBMux {
@@ -310,9 +306,7 @@ func NewUSBMux(socketpath string) *USBMux {
 		socketpath = "/var/run/usbmuxd"
 	}
 
-	b := &BinaryProtocol{}
-	u := &USBMux{socketpath, b, NewMuxConnection(socketpath, b), nil, 0}
-
+	u := &USBMux{socketpath, NewMuxConnection(socketpath), nil, 0}
 	u.Devices = u.listener.devices
 	u.listener.listen()
 	return u
@@ -323,6 +317,6 @@ func (u *USBMux) Process(timeout interface{}) {
 }
 
 func (u *USBMux) Connect(device *MuxDevice, port int) net.Conn {
-	connector := NewMuxConnection(u.socketpath, BinaryProtocol{})
+	connector := NewMuxConnection(u.socketpath)
 	return connector.connect(device, port)
 }
