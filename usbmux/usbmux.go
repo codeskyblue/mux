@@ -80,11 +80,11 @@ const (
 )
 
 type BinaryProtocol struct {
-	sock      net.Conn
+	socket    *SafeStreamSocket
 	connected bool
 }
 
-func NewBinaryProtocol(socket net.Conn) *BinaryProtocol {
+func NewBinaryProtocol(socket *SafeStreamSocket) *BinaryProtocol {
 	return &BinaryProtocol{socket, false}
 }
 
@@ -166,28 +166,27 @@ func (b *BinaryProtocol) sendpacket(req int, tag int, payload map[string]interfa
 	}
 }
 
-// this function is disgusting
 // maybe return 3 interface{} ?
 func (b *BinaryProtocol) getpacket() (interface{}, interface{}, interface{}) {
 	if b.connected {
 		panic(fmt.Sprintf("Mux is connected, cannot issue control packets"))
 	}
 
-	buf := make([]byte, 4)
-	byteBuf := []*bytes.Buffer{{}, {}, {}}
+	dlen := b.socket.recv(4)
+	byteBuf := []*bytes.Buffer{{}, {}}
 
 	err := binary.Write(byteBuf[0], binary.LittleEndian, dlen)
 	if err != nil {
 		panic(fmt.Sprintln(err))
 	}
+	dlen = byteBuf[0].Bytes()
 
 	var ndlen byte
 	for i := range dlen {
 		ndlen += dlen[i]
 	}
 
-	// byteBuf[1] == body
-	// var _, _ = b.sock.Read(byteBuf[0].Bytes() - []byte{4}) //ugly
+	body := b.socket.recv(int(ndlen) - 4)
 
 	err = binary.Write(byteBuf[1], binary.LittleEndian, body[:0xc])
 	if err != nil {
@@ -199,7 +198,7 @@ func (b *BinaryProtocol) getpacket() (interface{}, interface{}, interface{}) {
 		panic(fmt.Sprintf("Version mismatch: expected %d, got %d", Version, version))
 	}
 
-	payload := b._unpack(int(resp), byteBuf[2].Bytes()[0xc:])
+	payload := b._unpack(int(resp), body[0xc:])
 
 	return resp, tag, payload
 }
@@ -229,7 +228,7 @@ func NewMuxConnection(socketpath string) *MuxConnection {
 
 	s := NewSafeStreamSocket(network, address)
 
-	return &MuxConnection{socketpath, s, NewBinaryProtocol(s.sock), 1, nil}
+	return &MuxConnection{socketpath, s, NewBinaryProtocol(s), 1, nil}
 }
 
 func (m *MuxConnection) _getreply() (interface{}, map[string]string) {
