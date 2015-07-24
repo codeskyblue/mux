@@ -151,19 +151,20 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 }
 
 // fix variable names here
-func (b *BinaryProtocol) sendpacket(req int, tag int, payload map[string]interface{}) {
-	payload2 := b._pack(req, payload)
+func (b *BinaryProtocol) sendpacket(req int, tag int, payload interface{}) {
+	payload = b._pack(req, payload.(map[string]interface{}))
 
 	if b.connected {
 		panic(fmt.Sprintf("Mux is connected, cannot issue control packets"))
 	}
 
-	length := 16 + len(payload2)
+	length := 16 + len(payload.([]byte))
 	data := &bytes.Buffer{}
 	err := binary.Write(data, binary.LittleEndian, length+Version+req+tag) // +payload2
 	if err != nil {
 		panic(fmt.Sprintln(err))
 	}
+	b.socket.send(data.Bytes())
 }
 
 // maybe return 3 interface{} ?
