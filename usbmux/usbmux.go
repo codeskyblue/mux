@@ -168,7 +168,7 @@ func (b *BinaryProtocol) sendpacket(req int, tag int, payload interface{}) {
 }
 
 // maybe return 3 interface{} ?
-func (b *BinaryProtocol) getpacket() (interface{}, interface{}, interface{}) {
+func (b *BinaryProtocol) getpacket() (interface{}, interface{}, map[string]interface{}) {
 	if b.connected {
 		panic(fmt.Sprintf("Mux is connected, cannot issue control packets"))
 	}
@@ -232,12 +232,12 @@ func NewMuxConnection(socketpath string) *MuxConnection {
 	return &MuxConnection{socketpath, s, NewBinaryProtocol(s), 1, nil}
 }
 
-func (m *MuxConnection) _getreply() (interface{}, map[string]string) {
+func (m *MuxConnection) _getreply() (interface{}, map[string]interface{}) {
 	for true {
 		resp, tag, data := m.proto.getpacket()
 
 		if resp == TypeResult {
-			return tag, data.(map[string]string)
+			return tag, data
 		}
 
 		panic(fmt.Sprintf("Invalid packet type received: %d", resp))
@@ -254,10 +254,10 @@ func (m *MuxConnection) _processpacket() {
 	case TypeDeviceAdd:
 		// welcome to assertion hell
 		// this is literally hitler code
-		m.devices = append(m.devices, NewMuxDevice(data.(map[string]interface{})["DeviceID"].(float32), data.(map[string]interface{})["Properties"].(byte), data.(map[string]interface{})["Properties"].(map[string]string)["SerialNumber"], data.(map[string]interface{})["Properties"].(map[string]byte)["LocationID"]))
+		m.devices = append(m.devices, NewMuxDevice(data["DeviceID"].(float32), data["Properties"].(byte), data["Properties"].(map[string]string)["SerialNumber"], data["Properties"].(map[string]byte)["LocationID"]))
 	case TypeDeviceRemove:
 		for i, v := range m.devices {
-			if v.devid == data.(map[string]interface{})["DeviceID"] {
+			if v.devid == data["DeviceID"] {
 				// deletes an element from the map
 				m.devices = append(m.devices[:i], m.devices[i+1:]...)
 			}
@@ -279,7 +279,7 @@ func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) inter
 		panic(fmt.Sprintf("Reply tag mismatch: expected %d, got %d", m.pkttag, recvtag))
 	}
 
-	return data["Number"]
+	return data["Number"].(string)
 }
 
 func (m *MuxConnection) listen() {
