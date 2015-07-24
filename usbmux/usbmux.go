@@ -93,7 +93,10 @@ func (b *BinaryProtocol) _pack(req int, payload map[string]interface{}) []byte {
 	switch req {
 	case TypeConnect:
 		buf := &bytes.Buffer{}
-		binary.Write(buf, binary.LittleEndian, payload["DeviceID"].(string)+payload["PortNumber"].(string)+"\x00\x00")
+		err := binary.Write(buf, binary.LittleEndian, payload["DeviceID"].(string)+payload["PortNumber"].(string)+"\x00\x00")
+		if err != nil {
+			panic(fmt.Sprintln(err))
+		}
 		return buf.Bytes()
 	case TypeListen:
 		return nil
@@ -106,14 +109,20 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 	switch resp {
 	case TypeResult:
 		buf := &bytes.Buffer{}
-		binary.Read(buf, binary.LittleEndian, payload)
+		err := binary.Read(buf, binary.LittleEndian, payload)
+		if err != nil {
+			panic(fmt.Sprintln(err))
+		}
 		return map[string]interface{}{
 			"Number": buf.Bytes()[0],
 		}
 	case TypeDeviceAdd:
 		buf := &bytes.Buffer{}
 
-		binary.Read(buf, binary.LittleEndian, payload)
+		err := binary.Read(buf, binary.LittleEndian, payload)
+		if err != nil {
+			panic(fmt.Sprintln(err))
+		}
 		devid, usbpid, location := buf.Bytes()[0], buf.Bytes()[1], buf.Bytes()[4]
 		serial := strings.Split(string(buf.Bytes()[2]), "\\0")[0]
 
@@ -128,7 +137,10 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 	case TypeDeviceRemove:
 		buf := &bytes.Buffer{}
 
-		binary.Read(buf, binary.LittleEndian, payload)
+		err := binary.Read(buf, binary.LittleEndian, payload)
+		if err != nil {
+			panic(fmt.Sprintln(err))
+		}
 		devid := buf.Bytes()[0]
 
 		return map[string]interface{}{
@@ -148,8 +160,10 @@ func (b *BinaryProtocol) sendpacket(req int, tag int, payload map[string]interfa
 
 	length := 16 + len(payload2)
 	data := &bytes.Buffer{}
-	binary.Write(data, binary.LittleEndian, length+Version+req+tag) // +payload2
-	b.sock.Write(data.Bytes())
+	err := binary.Write(data, binary.LittleEndian, length+Version+req+tag) // +payload2
+	if err != nil {
+		panic(fmt.Sprintln(err))
+	}
 }
 
 // this function is disgusting
@@ -162,14 +176,23 @@ func (b *BinaryProtocol) getpacket() (interface{}, interface{}, interface{}) {
 	buf := make([]byte, 4)
 	byteBuf := []*bytes.Buffer{{}, {}, {}}
 
-	_, _ = b.sock.Read(buf)
+	err := binary.Write(byteBuf[0], binary.LittleEndian, dlen)
+	if err != nil {
+		panic(fmt.Sprintln(err))
+	}
 
-	binary.Write(byteBuf[0], binary.LittleEndian, buf[0])
+	var ndlen byte
+	for i := range dlen {
+		ndlen += dlen[i]
+	}
 
 	// byteBuf[1] == body
 	// var _, _ = b.sock.Read(byteBuf[0].Bytes() - []byte{4}) //ugly
 
-	binary.Write(byteBuf[1], binary.LittleEndian, byteBuf[0].Bytes()[:0xc])
+	err = binary.Write(byteBuf[1], binary.LittleEndian, body[:0xc])
+	if err != nil {
+		panic(fmt.Sprintln(err))
+	}
 	version, resp, tag := byteBuf[1].Bytes()[0], byteBuf[1].Bytes()[1], byteBuf[1].Bytes()[2]
 
 	if version != Version {
@@ -290,7 +313,10 @@ func (m *MuxConnection) connect(device *MuxDevice, port int) net.Conn {
 }
 
 func (m *MuxConnection) close() {
-	m.socket.sock.Close()
+	err := m.socket.sock.Close()
+	if err != nil {
+		panic(fmt.Sprintln(err))
+	}
 }
 
 type USBMux struct {
