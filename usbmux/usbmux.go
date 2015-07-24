@@ -38,21 +38,20 @@ func (s *SafeStreamSocket) send(msg []byte) {
 	}
 }
 
-func (s *SafeStreamSocket) recv(size int) string {
-	var msg string
-	payload := []byte{byte(size - len(msg))} //ugly
+// no longer returns a string
+func (s *SafeStreamSocket) recv(size int) []byte {
+	var msg []byte
+	data := byte(size - len(msg))
+	payload := []byte{data}
 
 	for len(msg) < size {
-		var chunk, err = s.sock.Read(payload)
-		if err != nil {
-			fmt.Println(err)
-		}
+		chunk, _ := s.sock.Read(payload)
 		if chunk == 0 {
-			panic(fmt.Sprintf("socket connection broken"))
+			panic(fmt.Sprintln("socket connection broken"))
 		}
-		msg = msg + string(chunk) //ugly
+		// msg = msg + chunk
+		msg = append(msg, byte(chunk))
 	}
-
 	return msg
 }
 
