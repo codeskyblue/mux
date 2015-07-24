@@ -352,9 +352,9 @@ func NewUSBMux(socketpath string) *USBMux {
 		socketpath = "/var/run/usbmuxd"
 	}
 
-	u := &USBMux{socketpath, NewMuxConnection(socketpath), nil, 0}
-	u.Devices = u.listener.devices
+	u := &USBMux{socketpath: socketpath, listener: NewMuxConnection(socketpath)}
 	u.listener.listen()
+	u.Devices = u.listener.devices
 	return u
 }
 
