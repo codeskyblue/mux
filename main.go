@@ -1,14 +1,13 @@
 package main
 
 import (
-	// "tcprelay"
 	"fmt"
 	"usbmux"
 )
 
 func main() {
 	// put this is usbmux's init function?
-	mux := usbmux.NewUSBMux("")
+	mux := usbmux.New("")
 	fmt.Println("Waiting for devices...")
 
 	if mux.Devices == nil {
