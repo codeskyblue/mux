@@ -100,7 +100,7 @@ func (b *BinaryProtocol) SendPacket(req int, tag int, payload interface{}) {
 
 	length := 16 + len(payload.([]byte))
 	data := &bytes.Buffer{}
-	err := binary.Write(data, binary.LittleEndian, length+Version+req+tag) // +payload2
+	err := binary.Write(data, binary.LittleEndian, int32(length+Version+req+tag)) // +payload
 	if err != nil {
 		panic(fmt.Sprintln(err))
 	}
@@ -116,7 +116,7 @@ func (b *BinaryProtocol) GetPacket() (interface{}, interface{}, map[string]inter
 	dlen := b.socket.Recv(4)
 	byteBuf := []*bytes.Buffer{{}, {}}
 
-	err := binary.Write(byteBuf[0], binary.LittleEndian, dlen)
+	err := binary.Write(byteBuf[0], binary.LittleEndian, []uint8(dlen))
 	if err != nil {
 		panic(fmt.Sprintln(err))
 	}
@@ -129,7 +129,7 @@ func (b *BinaryProtocol) GetPacket() (interface{}, interface{}, map[string]inter
 
 	body := b.socket.Recv(int(ndlen) - 4)
 
-	err = binary.Write(byteBuf[1], binary.LittleEndian, body[:0xc])
+	err = binary.Write(byteBuf[1], binary.LittleEndian, []uint8(body)[:0xc])
 	if err != nil {
 		panic(fmt.Sprintln(err))
 	}
