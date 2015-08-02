@@ -23,11 +23,11 @@ func New(socketpath string) *MuxConnection {
 
 	// get this straightened out
 	if runtime.GOOS == "windows" {
+		network = "tcp"
 		address = "127.0.0.1:27015"
-		network = "ip4"
 	} else {
-		address = socketpath
 		network = "unix"
+		address = socketpath
 	}
 
 	s := SafeStreamSocket.New(network, address)
