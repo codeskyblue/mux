@@ -90,8 +90,7 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 	panic(fmt.Sprintf("Invalid incoming request type %d", resp))
 }
 
-// fix variable names here
-func (b *BinaryProtocol) SendPacket(req int, tag int, payload interface{}) {
+func (b *BinaryProtocol) SendPacket(req, tag int, payload interface{}) {
 	payload = b._pack(req, payload.(map[string]interface{}))
 
 	if b.Connected {
@@ -99,12 +98,16 @@ func (b *BinaryProtocol) SendPacket(req int, tag int, payload interface{}) {
 	}
 
 	length := 16 + len(payload.([]byte))
-	data := &bytes.Buffer{}
-	err := binary.Write(data, binary.LittleEndian, int32(length+Version+req+tag)) // +payload
+	buf := &bytes.Buffer{}
+
+	err := binary.Write(buf, binary.LittleEndian, int32(length+Version+req+tag))
 	if err != nil {
 		panic(err)
 	}
-	b.socket.Send(data.Bytes())
+
+	data := append(buf.Bytes(), payload.([]byte)...)
+
+	b.socket.Send(data)
 }
 
 // cast cast city here come the casts
