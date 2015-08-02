@@ -73,16 +73,14 @@ func (m *MuxConnection) _processpacket() {
 }
 
 func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) interface{} {
-	m.pkttag++
-
 	m.proto.SendPacket(req, m.pkttag, payload)
 	recvtag, data := m._getreply()
 
-	if recvtag != m.pkttag {
+	if int(recvtag) != m.pkttag {
 		panic(fmt.Sprintf("Reply tag mismatch: expected %d, got %d", m.pkttag, recvtag))
 	}
 
-	return data["Number"].(string)
+	return data["Number"]
 }
 
 func (m *MuxConnection) Listen() {
@@ -96,7 +94,8 @@ func (m *MuxConnection) Process(timeout time.Duration) {
 	if m.proto.Connected {
 		panic("Socket is connected, cannot process listener events")
 	}
-	var ch chan net.Conn
+	// not sure if this is a correct implementation
+	ch := make(chan net.Conn)
 
 	ch <- m.socket.Sock
 	ch <- nil
@@ -107,26 +106,23 @@ func (m *MuxConnection) Process(timeout time.Duration) {
 		if v == m.socket.Sock {
 			m._processpacket()
 		}
-	// not sure if this is a correct implementation
 	case <-time.After(timeout):
 		err := m.socket.Sock.Close()
 		if err != nil {
 			panic(fmt.Sprintln("Exception in listener socket (channel timed out), ", err))
 		}
-		// defer close(ch)
-
-		panic(fmt.Sprintln("Exception in listener socket (channel timed out)"))
+		defer close(ch)
 	}
 }
 
 func (m *MuxConnection) Connect(device *MuxDevice.MuxDevice, port int) net.Conn {
-	payload := map[string]interface{}{
-		"DeviceID":   device.Devid,
-		"PortNumber": ((port << 8) & 0xFF00) | (port >> 8),
-	}
+	ret := m._exchange(BinaryProtocol.TypeConnect,
+		map[string]interface{}{
+			"DeviceID":   device.Devid,
+			"PortNumber": ((port << 8) & 0xFF00) | (port >> 8),
+		})
 
-	ret := m._exchange(BinaryProtocol.TypeConnect, payload)
-	if ret != 0 {
+	if ret != nil {
 		panic(fmt.Sprintf("Connect failed: error %d", ret))
 	}
 
