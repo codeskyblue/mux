@@ -27,7 +27,7 @@ func (s *SafeStreamSocket) Send(msg []byte) {
 			fmt.Println(err)
 		}
 		if sent == 0 {
-			panic(fmt.Sprintf("socket connection broken"))
+			panic("socket connection broken")
 		}
 		totalsent = totalsent + sent
 	}
@@ -42,10 +42,10 @@ func (s *SafeStreamSocket) Recv(size int) []byte {
 	for len(msg) < size {
 		chunk, err := s.Sock.Read(payload)
 		if err != nil {
-			panic(fmt.Sprintln(err))
+			panic(err)
 		}
 		if chunk == 0 {
-			panic(fmt.Sprintln("socket connection broken"))
+			panic("socket connection broken")
 		}
 		// msg = msg + chunk
 		msg = append(msg, byte(chunk))

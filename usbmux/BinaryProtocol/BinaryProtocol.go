@@ -33,7 +33,7 @@ func (b *BinaryProtocol) _pack(req int, payload map[string]interface{}) []byte {
 		buf := &bytes.Buffer{}
 		err := binary.Write(buf, binary.LittleEndian, payload["DeviceID"].(string)+payload["PortNumber"].(string)+"\x00\x00")
 		if err != nil {
-			panic(fmt.Sprintln(err))
+			panic(err)
 		}
 		return buf.Bytes()
 	case TypeListen:
@@ -49,7 +49,7 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 		buf := &bytes.Buffer{}
 		err := binary.Read(buf, binary.LittleEndian, payload)
 		if err != nil {
-			panic(fmt.Sprintln(err))
+			panic(err)
 		}
 
 		return map[string]interface{}{
@@ -60,7 +60,7 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 
 		err := binary.Read(buf, binary.LittleEndian, payload)
 		if err != nil {
-			panic(fmt.Sprintln(err))
+			panic(err)
 		}
 
 		devid, usbpid, location := buf.Bytes()[0], buf.Bytes()[1], buf.Bytes()[4]
@@ -79,7 +79,7 @@ func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]inter
 
 		err := binary.Read(buf, binary.LittleEndian, payload)
 		if err != nil {
-			panic(fmt.Sprintln(err))
+			panic(err)
 		}
 		devid := buf.Bytes()[0]
 
@@ -95,14 +95,14 @@ func (b *BinaryProtocol) SendPacket(req int, tag int, payload interface{}) {
 	payload = b._pack(req, payload.(map[string]interface{}))
 
 	if b.Connected {
-		panic(fmt.Sprintf("Mux is connected, cannot issue control packets"))
+		panic("Mux is connected, cannot issue control packets")
 	}
 
 	length := 16 + len(payload.([]byte))
 	data := &bytes.Buffer{}
 	err := binary.Write(data, binary.LittleEndian, int32(length+Version+req+tag)) // +payload
 	if err != nil {
-		panic(fmt.Sprintln(err))
+		panic(err)
 	}
 	b.socket.Send(data.Bytes())
 }
@@ -110,7 +110,7 @@ func (b *BinaryProtocol) SendPacket(req int, tag int, payload interface{}) {
 // maybe return 3 interface{} ?
 func (b *BinaryProtocol) GetPacket() (interface{}, interface{}, map[string]interface{}) {
 	if b.Connected {
-		panic(fmt.Sprintf("Mux is connected, cannot issue control packets"))
+		panic("Mux is connected, cannot issue control packets")
 	}
 
 	dlen := b.socket.Recv(4)
@@ -118,7 +118,7 @@ func (b *BinaryProtocol) GetPacket() (interface{}, interface{}, map[string]inter
 
 	err := binary.Write(byteBuf[0], binary.LittleEndian, []uint8(dlen))
 	if err != nil {
-		panic(fmt.Sprintln(err))
+		panic(err)
 	}
 	dlen = byteBuf[0].Bytes()
 
@@ -131,7 +131,7 @@ func (b *BinaryProtocol) GetPacket() (interface{}, interface{}, map[string]inter
 
 	err = binary.Write(byteBuf[1], binary.LittleEndian, []uint8(body)[:0xc])
 	if err != nil {
-		panic(fmt.Sprintln(err))
+		panic(err)
 	}
 	version, resp, tag := byteBuf[1].Bytes()[0], byteBuf[1].Bytes()[1], byteBuf[1].Bytes()[2]
 
