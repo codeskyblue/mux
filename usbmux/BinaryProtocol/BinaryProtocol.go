@@ -31,7 +31,7 @@ func (b *BinaryProtocol) _pack(req int, payload map[string]interface{}) []byte {
 	switch req {
 	case TypeConnect:
 		buf := &bytes.Buffer{}
-		err := binary.Write(buf, binary.LittleEndian, payload["DeviceID"].(string)+payload["PortNumber"].(string)+"\x00\x00")
+		err := binary.Write(buf, binary.LittleEndian, payload["DeviceID"].(byte)+payload["PortNumber"].(byte)+0x00+0x00)
 		if err != nil {
 			panic(err)
 		}
