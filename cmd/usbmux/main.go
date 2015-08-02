@@ -2,25 +2,31 @@ package main
 
 import (
 	"fmt"
+	"time"
 	"usbmux"
 )
 
 func main() {
-	// put this is usbmux's init function?
 	mux := usbmux.New("")
+
 	fmt.Println("Waiting for devices...")
 
 	if mux.Devices == nil {
-		mux.Process(0.1)
+		// not necessarily right
+		fmt.Println("No devices dawg")
+		mux.Process(time.Millisecond)
 	}
 
-	for true {
+	for {
 		fmt.Println("Devices:")
 
 		for _, v := range mux.Devices {
 			fmt.Println(v)
 		}
 
-		mux.Process(nil)
+		var d time.Duration
+
+		// not necessarily right
+		mux.Process(d)
 	}
 }
