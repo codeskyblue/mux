@@ -35,7 +35,7 @@ func New(socketpath string) *MuxConnection {
 	return &MuxConnection{socketpath, s, BinaryProtocol.New(s), 1, nil}
 }
 
-func (m *MuxConnection) _getreply() (interface{}, map[string]interface{}) {
+func (m *MuxConnection) _getreply() (byte, map[string]interface{}) {
 	for true {
 		resp, tag, data := m.proto.GetPacket()
 
@@ -45,7 +45,7 @@ func (m *MuxConnection) _getreply() (interface{}, map[string]interface{}) {
 
 		panic(fmt.Sprintf("Invalid packet type received: %d", resp))
 	}
-	return nil, nil
+	return 0, nil
 }
 
 // this function is disgusting
