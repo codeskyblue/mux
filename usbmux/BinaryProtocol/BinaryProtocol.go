@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	TypeResult       = 1
-	TypeConnect      = 2
-	TypeListen       = 3
-	TypeDeviceAdd    = 4
-	TypeDeviceRemove = 5
-	Version          = 0
+	Version = iota
+	TypeResult
+	TypeConnect
+	TypeListen
+	TypeDeviceAdd
+	TypeDeviceRemove
 )
 
 type BinaryProtocol struct {
