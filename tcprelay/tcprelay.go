@@ -2,41 +2,49 @@ package tcprelay
 
 import (
 	"fmt"
+	"net"
+	"tcprelay/SocketRelay"
 	"usbmux"
 )
 
-type SocketRelay struct {
-	a      int
-	b      int
-	atob   string
-	btoa   string
-	maxbuf int
-}
-
-func NewSocketRelay(a, b, maxbuf int) *SocketRelay {
-	return &SocketRelay{a, b, maxbuf: 65535}
-}
-
-// not done
-func (s *SocketRelay) handle() {
-	for true {
-		var rlist, wlist []int
-		xlist := []int{s.a, s.b}
-
-		if s.atob {
-			wlist.append(s.b)
-		}
-		if s.btoa {
-			wlist.append(s.a)
-		}
-		if len(s.atob) < s.maxbuf {
-			rlist.append(s.a)
-		}
-		if len(s.btoa) < s.maxbuf {
-			rlist.append(s.a)
-		}
-	}
-}
-
 type TCPRelay struct {
+	server net.Conn
+}
+
+func (t *TCPRelay) handle() {
+	// server_address = LocalAddr() or RemoteAddr()
+	fmt.Printf("Incoming connection to %d", t.server.RemoteAddr()[1])
+
+	mux := usbmux.NewUSBMux("")
+
+	fmt.Println("Waiting for devices...")
+
+	if mux.Devices == nil {
+		mux.Process(1.0)
+		fmt.Println("No device found")
+		t.server.Close()
+		return
+	}
+
+	dev := mux.Devices[0]
+	fmt.Printf("Connecting to device %s", dev.Fields())
+
+	dsock := mux.Connect(dev, t.server.RemoteAddr().String())
+	lsock := t.server
+
+	fmt.Println("Connection established, relaying data")
+
+	fwd := SocketRelay.New(dsock, lsock, 1022)
+	fwd.handle()
+
+	defer dsock.close()
+	defer lsock.close()
+
+	fmt.Println("Connection closed")
+}
+
+type TCPServer struct {
+}
+
+type ThreadedTCPServer struct {
 }
