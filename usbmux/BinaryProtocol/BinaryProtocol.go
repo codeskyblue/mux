@@ -107,27 +107,26 @@ func (b *BinaryProtocol) SendPacket(req int, tag int, payload interface{}) {
 	b.socket.Send(data.Bytes())
 }
 
-// maybe return 3 interface{} ?
-func (b *BinaryProtocol) GetPacket() (interface{}, interface{}, map[string]interface{}) {
+// cast cast city here come the casts
+// casting dlen might not be necessary but better safe than sorry?
+// although most of these are harmless without any loss of precision
+func (b *BinaryProtocol) GetPacket() (byte, byte, map[string]interface{}) {
 	if b.Connected {
 		panic("Mux is connected, cannot issue control packets")
 	}
 
-	dlen := b.socket.Recv(4)
+	var dlen interface{} = b.socket.Recv(4)
+
 	byteBuf := []*bytes.Buffer{{}, {}}
 
-	err := binary.Write(byteBuf[0], binary.LittleEndian, []uint8(dlen))
+	err := binary.Write(byteBuf[0], binary.LittleEndian, []uint8(dlen.([]byte)))
 	if err != nil {
 		panic(err)
 	}
-	dlen = byteBuf[0].Bytes()
 
-	var ndlen byte
-	for i := range dlen {
-		ndlen += dlen[i]
-	}
+	dlen = byteBuf[0].Bytes()[0]
 
-	body := b.socket.Recv(int(ndlen) - 4)
+	body := b.socket.Recv(int(dlen.(byte)))
 
 	err = binary.Write(byteBuf[1], binary.LittleEndian, []uint8(body)[:0xc])
 	if err != nil {
