@@ -34,20 +34,24 @@ func (s *SafeStreamSocket) Send(msg []byte) {
 }
 
 // no longer returns a string
+// this func is fucked dawg
 func (s *SafeStreamSocket) Recv(size int) []byte {
+	fmt.Println("Recv called!")
+
 	var msg []byte
-	data := byte(size - len(msg))
-	payload := []byte{data}
+	buf := make([]byte, 0, size-len(msg))
+	fmt.Println("buffer allocated")
 
 	for len(msg) < size {
-		chunk, err := s.Sock.Read(payload)
+		chunk, err := s.Sock.Read(buf)
 		if err != nil {
 			panic(err)
 		}
+
 		if chunk == 0 {
 			panic("socket connection broken")
 		}
-		// msg = msg + chunk
+
 		msg = append(msg, byte(chunk))
 	}
 	return msg
