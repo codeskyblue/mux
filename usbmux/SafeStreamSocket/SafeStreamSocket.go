@@ -18,10 +18,11 @@ func New(network, address string) *SafeStreamSocket {
 	return &SafeStreamSocket{ret}
 }
 
+// usbmux/SafeStreamSocket.(*SafeStreamSocket).Send
 func (s *SafeStreamSocket) Send(msg []byte) {
-	var totalsent int
+	// var totalsent int
 
-	for totalsent < len(msg) {
+	for totalsent, sent := 0, 0; totalsent < len(msg); totalsent += sent {
 		sent, err := s.Sock.Write(msg[totalsent:])
 		if err != nil {
 			fmt.Println(err)
@@ -29,30 +30,33 @@ func (s *SafeStreamSocket) Send(msg []byte) {
 		if sent == 0 {
 			panic("socket connection broken")
 		}
-		totalsent = totalsent + sent
+		// totalsent = totalsent + sent
 	}
 }
 
 // no longer returns a string
 // this func is fucked dawg
+
+// usbmux/SafeStreamSocket.(*SafeStreamSocket).Recv
+// net.(*conn).Read
 func (s *SafeStreamSocket) Recv(size int) []byte {
 	fmt.Println("Recv called!")
 
 	var msg []byte
 	buf := make([]byte, 0, size-len(msg))
-	fmt.Println("buffer allocated")
 
-	for len(msg) < size {
+	for ; len(msg) < size; msg = append(msg, buf...) {
 		chunk, err := s.Sock.Read(buf)
+		fmt.Println("Read called!")
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
 		}
 
 		if chunk == 0 {
 			panic("socket connection broken")
 		}
 
-		msg = append(msg, byte(chunk))
+		// msg = append(msg, buf...)
 	}
 	return msg
 }
