@@ -72,7 +72,7 @@ func (m *MuxConnection) _processpacket() {
 	}
 }
 
-func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) interface{} {
+func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) int {
 	m.proto.SendPacket(req, m.pkttag, payload)
 	recvtag, data := m._getreply()
 
@@ -80,12 +80,12 @@ func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) inter
 		panic(fmt.Sprintf("Reply tag mismatch: expected %d, got %d", m.pkttag, recvtag))
 	}
 
-	return data["Number"]
+	return data["Number"].(int)
 }
 
 func (m *MuxConnection) Listen() {
 	ret := m._exchange(BinaryProtocol.TypeListen, nil)
-	if ret != nil {
+	if ret != 0 {
 		panic(fmt.Sprintf("Listen failed: error %d", ret))
 	}
 }
@@ -122,7 +122,7 @@ func (m *MuxConnection) Connect(device *MuxDevice.MuxDevice, port int) net.Conn 
 			"PortNumber": ((port << 8) & 0xFF00) | (port >> 8),
 		})
 
-	if ret != nil {
+	if ret != 0 {
 		panic(fmt.Sprintf("Connect failed: error %d", ret))
 	}
 
