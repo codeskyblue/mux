@@ -93,24 +93,15 @@ func (m *MuxConnection) Process(timeout time.Duration) {
 	if m.proto.Connected {
 		panic("Socket is connected, cannot process listener events")
 	}
-	// not sure if this is a correct implementation
-	ch := make(chan net.Conn)
 
-	ch <- m.socket.Sock
-	ch <- nil
-	ch <- m.socket.Sock
+	m._processpacket()
 
-	select {
-	case v := <-ch:
-		if v == m.socket.Sock {
-			m._processpacket()
-		}
-	case <-time.After(timeout):
+	if _, ok := <-time.After(timeout); ok == true {
 		err := m.socket.Sock.Close()
 		if err != nil {
 			panic(fmt.Sprintln("Exception in listener socket (channel timed out), ", err))
 		}
-		defer close(ch)
+		// defer m.socket.Sock.Close()
 	}
 }
 
