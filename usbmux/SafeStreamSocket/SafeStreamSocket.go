@@ -19,18 +19,21 @@ func New(network, address string) *SafeStreamSocket {
 }
 
 // usbmux/SafeStreamSocket.(*SafeStreamSocket).Send
+// i made a revert here!
 func (s *SafeStreamSocket) Send(msg []byte) {
-	// var totalsent int
+	var totalsent int
 
-	for totalsent, sent := 0, 0; totalsent < len(msg); totalsent += sent {
+	for totalsent < len(msg) {
 		sent, err := s.Sock.Write(msg[totalsent:])
 		if err != nil {
 			fmt.Println(err)
 		}
+
 		if sent == 0 {
 			panic("socket connection broken")
 		}
-		// totalsent = totalsent + sent
+
+		totalsent += sent
 	}
 }
 
@@ -40,11 +43,11 @@ func (s *SafeStreamSocket) Recv(size int) []byte {
 	fmt.Println("Recv called!")
 
 	var msg []byte
-	buf := make([]byte, 0, size-len(msg))
 
-	for ; len(msg) < size; msg = append(msg, buf...) {
+	for len(msg) < size {
+		buf := make([]byte, 0, size-len(msg))
+
 		chunk, err := s.Sock.Read(buf)
-		fmt.Println("Read called!")
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -53,7 +56,7 @@ func (s *SafeStreamSocket) Recv(size int) []byte {
 			panic("socket connection broken")
 		}
 
-		// msg = append(msg, buf...)
+		msg = append(msg, buf...)
 	}
 	return msg
 }
