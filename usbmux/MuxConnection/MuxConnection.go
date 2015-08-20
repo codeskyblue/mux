@@ -70,12 +70,17 @@ func (m *MuxConnection) _processpacket() {
 	}
 }
 
+// if payload is nil, what happens?
+// need to intialize it maybe?
 func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) int {
-	m.proto.SendPacket(req, m.pkttag, payload)
+	mytag := m.pkttag
+	m.pkttag++
+
+	m.proto.SendPacket(req, mytag, payload)
 	recvtag, data := m._getreply()
 
-	if int(recvtag) != m.pkttag {
-		panic(fmt.Sprintf("Reply tag mismatch: expected %d, got %d", m.pkttag, recvtag))
+	if int(recvtag) != mytag {
+		panic(fmt.Sprintf("Reply tag mismatch: expected %d, got %d", mytag, recvtag))
 	}
 
 	return data["Number"].(int)
