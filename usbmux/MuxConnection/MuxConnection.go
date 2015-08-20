@@ -21,7 +21,6 @@ type MuxConnection struct {
 func New(socketpath string) *MuxConnection {
 	var address, network string
 
-	// get this straightened out
 	if runtime.GOOS == "windows" {
 		network = "tcp"
 		address = "127.0.0.1:27015"

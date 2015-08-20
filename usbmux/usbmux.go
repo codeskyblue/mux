@@ -9,10 +9,9 @@ import (
 
 type USBMux struct {
 	socketpath string
-	// protoclass *BinaryProtocol
-	listener *MuxConnection.MuxConnection
-	Devices  []*MuxDevice.MuxDevice
-	version  int
+	listener   *MuxConnection.MuxConnection
+	Devices    []*MuxDevice.MuxDevice
+	version    int
 }
 
 func New(socketpath string) *USBMux {
@@ -21,6 +20,7 @@ func New(socketpath string) *USBMux {
 	}
 
 	u := &USBMux{socketpath: socketpath, listener: MuxConnection.New(socketpath)}
+
 	u.listener.Listen()
 	u.Devices = u.listener.Devices
 	return u

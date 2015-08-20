@@ -34,9 +34,6 @@ func (s *SafeStreamSocket) Send(msg []byte) {
 	}
 }
 
-// no longer returns a string
-// this func is fucked dawg
-
 // usbmux/SafeStreamSocket.(*SafeStreamSocket).Recv
 // net.(*conn).Read
 func (s *SafeStreamSocket) Recv(size int) []byte {
