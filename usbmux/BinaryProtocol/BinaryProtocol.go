@@ -27,7 +27,7 @@ func New(socket *SafeStreamSocket.SafeStreamSocket) *BinaryProtocol {
 }
 
 // still needs work
-func (b *BinaryProtocol) _pack(req int, payload map[string]interface{}) []byte {
+func (*BinaryProtocol) _pack(req int, payload map[string]interface{}) []byte {
 	switch req {
 	case TypeConnect:
 		buf := &bytes.Buffer{}
@@ -43,7 +43,7 @@ func (b *BinaryProtocol) _pack(req int, payload map[string]interface{}) []byte {
 	panic(fmt.Sprintf("Invalid outgoing request type %d", req))
 }
 
-func (b *BinaryProtocol) _unpack(resp int, payload interface{}) map[string]interface{} {
+func (*BinaryProtocol) _unpack(resp int, payload interface{}) map[string]interface{} {
 	switch resp {
 	case TypeResult:
 		buf := &bytes.Buffer{}
