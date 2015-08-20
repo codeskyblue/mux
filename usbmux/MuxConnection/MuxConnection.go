@@ -44,7 +44,6 @@ func (m *MuxConnection) _getreply() (byte, map[string]interface{}) {
 
 		panic(fmt.Sprintf("Invalid packet type received: %d", resp))
 	}
-	return 0, nil
 }
 
 // this function is disgusting
