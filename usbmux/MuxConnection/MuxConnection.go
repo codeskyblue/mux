@@ -1,7 +1,7 @@
 package MuxConnection
 
 import (
-	"fmt"
+	"log"
 	"net"
 	"runtime"
 	"time"
@@ -32,18 +32,19 @@ func New(socketpath string) *MuxConnection {
 
 	s := SafeStreamSocket.New(network, address)
 
-	return &MuxConnection{socketpath, s, BinaryProtocol.New(s), 1, nil}
+	var devices []*MuxDevice.MuxDevice
+	return &MuxConnection{socketpath, s, BinaryProtocol.New(s), 1, devices}
 }
 
 func (m *MuxConnection) _getreply() (byte, map[string]interface{}) {
-	for true {
+	for {
 		resp, tag, data := m.proto.GetPacket()
 
 		if resp == BinaryProtocol.TypeResult {
 			return tag, data
 		}
 
-		panic(fmt.Sprintf("Invalid packet type received: %d", resp))
+		log.Fatalf("Invalid packet type received: %d", resp)
 	}
 }
 
@@ -65,9 +66,9 @@ func (m *MuxConnection) _processpacket() {
 			}
 		}
 	case BinaryProtocol.TypeResult:
-		panic(fmt.Sprintf("Unexpeted result: %d", resp))
+		log.Fatalf("Unexpeted result: %d", resp)
 	default:
-		panic(fmt.Sprintf("Invalid packet type received %d", resp))
+		log.Fatalf("Invalid packet type received %d", resp)
 	}
 }
 
@@ -81,7 +82,7 @@ func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) int {
 	recvtag, data := m._getreply()
 
 	if int(recvtag) != mytag {
-		panic(fmt.Sprintf("Reply tag mismatch: expected %d, got %d", mytag, recvtag))
+		log.Fatalf("Reply tag mismatch: expected %d, got %d", mytag, recvtag)
 	}
 
 	return data["Number"].(int)
@@ -90,13 +91,13 @@ func (m *MuxConnection) _exchange(req int, payload map[string]interface{}) int {
 func (m *MuxConnection) Listen() {
 	ret := m._exchange(BinaryProtocol.TypeListen, nil)
 	if ret != 0 {
-		panic(fmt.Sprintf("Listen failed: error %d", ret))
+		log.Fatalf("Listen failed: error %d", ret)
 	}
 }
 
 func (m *MuxConnection) Process(timeout time.Duration) {
 	if m.proto.Connected {
-		panic("Socket is connected, cannot process listener events")
+		log.Fatal("Socket is connected, cannot process listener events")
 	}
 
 	m._processpacket()
@@ -104,7 +105,7 @@ func (m *MuxConnection) Process(timeout time.Duration) {
 	if _, ok := <-time.After(timeout); ok == true {
 		err := m.socket.Sock.Close()
 		if err != nil {
-			panic(fmt.Sprintln("Exception in listener socket (channel timed out), ", err))
+			log.Fatalf("Exception in listener socket (channel timed out), ", err)
 		}
 		// defer m.socket.Sock.Close()
 	}
@@ -118,7 +119,7 @@ func (m *MuxConnection) Connect(device *MuxDevice.MuxDevice, port int) net.Conn 
 		})
 
 	if ret != 0 {
-		panic(fmt.Sprintf("Connect failed: error %d", ret))
+		log.Fatalf("Connect failed: error %d", ret)
 	}
 
 	m.proto.Connected = true
@@ -128,6 +129,6 @@ func (m *MuxConnection) Connect(device *MuxDevice.MuxDevice, port int) net.Conn 
 func (m *MuxConnection) close() {
 	err := m.socket.Sock.Close()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
