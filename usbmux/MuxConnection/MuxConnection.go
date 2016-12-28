@@ -5,9 +5,10 @@ import (
 	"net"
 	"runtime"
 	"time"
-	"usbmux/BinaryProtocol"
-	"usbmux/MuxDevice"
-	"usbmux/SafeStreamSocket"
+
+	"github.com/Mitchell-Riley/mux/usbmux/BinaryProtocol"
+	"github.com/Mitchell-Riley/mux/usbmux/MuxDevice"
+	"github.com/Mitchell-Riley/mux/usbmux/SafeStreamSocket"
 )
 
 type MuxConnection struct {

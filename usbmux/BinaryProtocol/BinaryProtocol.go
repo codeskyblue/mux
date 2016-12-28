@@ -5,7 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"strings"
-	"usbmux/SafeStreamSocket"
+
+	"github.com/Mitchell-Riley/mux/usbmux/SafeStreamSocket"
 )
 
 const (

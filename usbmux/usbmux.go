@@ -3,8 +3,9 @@ package usbmux
 import (
 	"net"
 	"time"
-	"usbmux/MuxConnection"
-	"usbmux/MuxDevice"
+
+	"github.com/Mitchell-Riley/mux/usbmux/MuxConnection"
+	"github.com/Mitchell-Riley/mux/usbmux/MuxDevice"
 )
 
 type USBMux struct {

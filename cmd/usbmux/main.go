@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"time"
-	"usbmux"
+
+	"github.com/Mitchell-Riley/mux/usbmux"
 )
 
 func main() {
