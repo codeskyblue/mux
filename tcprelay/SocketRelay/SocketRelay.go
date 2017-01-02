@@ -1,27 +1,29 @@
 package SocketRelay
 
 import (
-	//maybe?
-	"usbmux/SafeStreamSocket"
+	"fmt"
+
+	"github.com/Mitchell-Riley/mux/usbmux"
 )
 
 type SocketRelay struct {
 	// these might just be net.Conns idk
-	a      *SafeStreamSocket.SafeStreamSocket
-	b      *SafeStreamSocket.SafeStreamSocket
+	a      *usbmux.SafeStreamSocket
+	b      *usbmux.SafeStreamSocket
 	atob   string
 	btoa   string
 	maxbuf int
 }
 
-func New(a, b *SafeStreamSocket.SafeStreamSocket) *SocketRelay {
+func New(a, b *usbmux.SafeStreamSocket) *SocketRelay {
 	return &SocketRelay{a: a, b: b, maxbuf: 65535}
 }
 
 func (s *SocketRelay) handle() {
 	for {
-		var rlist, wlist []*SafeStreamSocket.SafeStreamSocket
-		xlist := []*SafeStreamSocket.SafeStreamSocket{s.a, s.b}
+		rlist := []*usbmux.SafeStreamSocket{}
+		wlist := []*usbmux.SafeStreamSocket{}
+		xlist := []*usbmux.SafeStreamSocket{s.a, s.b}
 
 		if s.atob != "" {
 			wlist = append(wlist, s.b)
@@ -35,18 +37,6 @@ func (s *SocketRelay) handle() {
 		}
 		if len(s.btoa) < s.maxbuf {
 			rlist = append(rlist, s.b)
-		}
-
-		ch := make(chan []*SafeStreamSocket.SafeStreamSocket)
-		ch <- rlist
-		ch <- wlist
-		ch <- xlist
-
-		select {
-		case v := <-ch:
-			if v == xlist {
-				return
-			}
 		}
 
 		// combines 2 for statements
@@ -81,4 +71,13 @@ func (s *SocketRelay) handle() {
 			}
 		}
 	}
+}
+
+type TCPRelay struct {
+}
+
+func (t *TCPRelay) handle() {
+	fmt.Println("Incoming connection to")
+	fmt.Println("Waiting for devices...")
+
 }

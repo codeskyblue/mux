@@ -3,15 +3,12 @@ package usbmux
 import (
 	"net"
 	"time"
-
-	"github.com/Mitchell-Riley/mux/usbmux/MuxConnection"
-	"github.com/Mitchell-Riley/mux/usbmux/MuxDevice"
 )
 
 type USBMux struct {
 	socketpath string
-	listener   *MuxConnection.MuxConnection
-	Devices    []*MuxDevice.MuxDevice
+	listener   *Connection
+	Devices    []*Device
 	version    int
 }
 
@@ -20,7 +17,7 @@ func New(socketpath string) *USBMux {
 		socketpath = "/var/run/usbmuxd"
 	}
 
-	u := &USBMux{socketpath: socketpath, listener: MuxConnection.New(socketpath)}
+	u := &USBMux{socketpath: socketpath, listener: NewConnection(socketpath)}
 
 	u.listener.Listen()
 	u.Devices = u.listener.Devices
@@ -31,7 +28,7 @@ func (u *USBMux) Process(timeout time.Duration) {
 	u.listener.Process(timeout)
 }
 
-func (u *USBMux) Connect(device *MuxDevice.MuxDevice, port int) net.Conn {
-	connector := MuxConnection.New(u.socketpath)
+func (u *USBMux) Connect(device *Device, port int) net.Conn {
+	connector := NewConnection(u.socketpath)
 	return connector.Connect(device, port)
 }

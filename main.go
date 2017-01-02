@@ -1,9 +1,6 @@
 package main
 
-import (
-	"flag"
-	"tcprelay"
-)
+import "flag"
 
 func main() {
 	HOST := "localhost"

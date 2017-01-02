@@ -1,4 +1,4 @@
-package SafeStreamSocket
+package usbmux
 
 import (
 	"fmt"
@@ -10,19 +10,17 @@ type SafeStreamSocket struct {
 	Sock net.Conn
 }
 
-func New(network, address string) *SafeStreamSocket {
-	ret, err := net.Dial(network, address)
+func NewSafeStreamSocket(network, address string) *SafeStreamSocket {
+	c, err := net.Dial(network, address)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	return &SafeStreamSocket{ret}
+	return &SafeStreamSocket{c}
 }
 
 func (s *SafeStreamSocket) Send(msg []byte) {
-	var totalsent int
-
-	for totalsent < len(msg) {
+	for totalsent := 0; totalsent < len(msg); {
 		sent, err := s.Sock.Write(msg[totalsent:])
 		if err != nil {
 			log.Fatal(err)
@@ -40,7 +38,7 @@ func (s *SafeStreamSocket) Recv(size int) []byte {
 	var msg []byte
 
 	for len(msg) < size {
-		buf := make([]byte, 0, size-len(msg))
+		buf := make([]byte, size-len(msg))
 
 		chunk, err := s.Sock.Read(buf)
 		if err != nil {

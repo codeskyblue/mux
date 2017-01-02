@@ -3,8 +3,8 @@ package tcprelay
 import (
 	"fmt"
 	"net"
-	"tcprelay/SocketRelay"
-	"usbmux"
+
+	"github.com/Mitchell-Riley/mux/tcprelay/SocketRelay"
 )
 
 type TCPRelay struct {
